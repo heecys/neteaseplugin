@@ -1094,7 +1094,7 @@
                   lyric: currentLyric
                 },
                 who: ["用户"],
-                action: "分享音乐",
+                action: "用户分享了正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}。当前歌词：${currentLyric}",
                 when: "刚刚",
                 where: "网易云插件",
                 source: "plugin"
@@ -1299,7 +1299,7 @@
                     lyric: currentLyric
                   },
                   who: ["用户"],
-                  action: "播放音乐",
+                  action: "用户正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}。当前歌词：${currentLyric}",
                   when: "刚刚",
                   where: "网易云插件",
                   source: "plugin"
