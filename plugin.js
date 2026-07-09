@@ -538,12 +538,27 @@
             realIP: "",
             syncChars: [],
             theme: "dark",
-            customCss: ""
+            customCss: "",
+            bgImage: "",
+            fontColor: ""
           }
           if (!Array.isArray(config.syncChars)) config.syncChars = []
           if (!config.theme) config.theme = "dark"
           if (config.customCss === undefined) config.customCss = ""
-          customStyleEl.textContent = config.customCss || ""
+          if (config.bgImage === undefined) config.bgImage = ""
+          if (config.fontColor === undefined) config.fontColor = ""
+          function applyCustomStyles() {
+            let styleText = config.customCss || ""
+            if (config.bgImage) {
+              const safeUrl = config.bgImage.replace(/"/g, "'")
+              styleText += `\n.${ROOT} .nm-bg { background-image: url(${safeUrl}); background-size: cover; background-position: center; }`
+            }
+            if (config.fontColor) {
+              styleText += `\n.${ROOT} { --nm-fg: ${config.fontColor}; --nm-accent: ${config.fontColor}; }`
+            }
+            customStyleEl.textContent = styleText
+          }
+          applyCustomStyles()
 
           let activeTab = "library"
           let searchResults = []
@@ -572,6 +587,7 @@
               <div class="nm-topbar">
                 <button class="nm-round nm-gear" title="设置">⚙</button>
                 <button class="nm-round nm-theme-toggle" title="日间/夜间">☾</button>
+                <button class="nm-round nm-topbar-style" title="背景/字体">🎨</button>
                 <button class="nm-round nm-topbar-login" title="登录/退出">${config.cookie ? "退出" : "登录"}</button>
                 <div class="nm-tabs">
                   <div class="nm-tab active" data-tab="search">搜索</div>
@@ -615,7 +631,6 @@
                   <button class="nm-round nm-np-collapse">︾</button>
                   <button class="nm-round nm-np-lyrics-toggle" title="显示歌词">词</button>
                   <button class="nm-round nm-np-share" title="分享">☰</button>
-                  <button class="nm-round nm-np-share-chat" title="分享到聊天">💬</button>
                 </div>
                 <img class="nm-np-art" />
                 <div class="nm-np-lyrics">
@@ -652,6 +667,7 @@
           const profileAvatar = root.querySelector(".nm-profile-avatar")
           const profileName = root.querySelector(".nm-profile-name")
           const topbarLoginBtn = root.querySelector(".nm-topbar-login")
+          const topbarStyleBtn = root.querySelector(".nm-topbar-style")
           const mini = root.querySelector(".nm-miniplayer")
           const miniImg = mini.querySelector("img")
           const miniTitle = mini.querySelector(".nm-mp-title")
@@ -668,7 +684,7 @@
           const npToggle = np.querySelector(".nm-np-toggle")
           const npLyricsInner = np.querySelector(".nm-np-lyrics-inner")
           const npLyricsToggleBtn = np.querySelector(".nm-np-lyrics-toggle")
-          const npShareChatBtn = np.querySelector(".nm-np-share-chat")
+          // no direct chat share button any more
 
           const AUDIO_ID = "roche-netease-audio-persistent"
           audioEl = document.getElementById(AUDIO_ID)
@@ -1001,6 +1017,8 @@
                 <div class="nm-modal-status">设置</div>
                 <input class="nm-settings-input" placeholder="API 地址，例如 https://xxx.vercel.app" value="${escapeHtml(config.apiBase)}" />
                 <input class="nm-settings-realip" placeholder="realIP（用 Vercel 部署时必填，如 116.25.146.177）" value="${escapeHtml(config.realIP)}" />
+                <input class="nm-settings-bg" placeholder="背景图片 URL" value="${escapeHtml(config.bgImage)}" />
+                <input class="nm-settings-font" placeholder="字体颜色，例如 #000000" value="${escapeHtml(config.fontColor)}" />
                 <textarea class="nm-settings-css" placeholder="自定义 CSS（选填，会覆盖默认样式）" rows="6">${escapeHtml(config.customCss)}</textarea>
                 <div class="nm-settings-note">
                   可在这里覆盖样式，例如：
@@ -1017,9 +1035,11 @@
             mask.querySelector(".nm-settings-save").onclick = async () => {
               config.apiBase = mask.querySelector(".nm-settings-input").value.trim()
               config.realIP = mask.querySelector(".nm-settings-realip").value.trim()
+              config.bgImage = mask.querySelector(".nm-settings-bg").value.trim()
+              config.fontColor = mask.querySelector(".nm-settings-font").value.trim()
               config.customCss = mask.querySelector(".nm-settings-css").value
-              customStyleEl.textContent = config.customCss || ""
               await roche.storage.set("config", config)
+              applyCustomStyles()
               roche.ui.toast("已保存")
               mask.remove()
             }
@@ -1089,14 +1109,15 @@
 
               await roche.memory.write({
                 conversationId,
-                summaryText: `用户分享了正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}。当前歌词：${currentLyric}`,
+                summaryText: `用户分享了正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}`,
+                descriptionText: `当前歌词：${currentLyric}`,
                 details: {
                   song: nowPlaying.name,
                   artist: nowPlaying.artist,
                   lyric: currentLyric
                 },
                 who: ["用户"],
-                action: "分享音乐",
+                action: `分享歌曲：《${nowPlaying.name}》`,
                 when: "刚刚",
                 where: "网易云插件",
                 source: "plugin"
@@ -1121,100 +1142,6 @@
             }
           }
 
-          async function openConversationPage(conversationId) {
-            if (!conversationId) return false
-            try {
-              if (roche.conversation && typeof roche.conversation.open === "function") {
-                await roche.conversation.open({ conversationId })
-                return true
-              }
-              if (roche.conversation && typeof roche.conversation.openConversation === "function") {
-                await roche.conversation.openConversation(conversationId)
-                return true
-              }
-              if (typeof roche.openConversation === "function") {
-                await roche.openConversation({ conversationId })
-                return true
-              }
-            } catch (e) {}
-            return false
-          }
-
-          async function shareToChatPage() {
-            if (!nowPlaying) {
-              roche.ui.toast("先播放一首歌")
-              return
-            }
-            let chars = []
-            try {
-              chars = await roche.character.list()
-            } catch (e) {
-              roche.ui.toast("获取角色列表失败")
-              return
-            }
-            if (!chars.length) {
-              roche.ui.toast("没有可分享的角色")
-              return
-            }
-
-            const mask = document.createElement("div")
-            mask.className = "nm-modal-mask"
-            mask.innerHTML = `
-              <div class="nm-modal-box">
-                <div class="nm-modal-status">分享到聊天页面</div>
-                ${chars.map((c, i) => `
-                  <div class="nm-char-row" data-idx="${i}">
-                    <img src="${c.avatar || ""}" />
-                    <div>${escapeHtml(c.handle || c.name)}</div>
-                  </div>
-                `).join("")}
-                <div style="margin-top:8px;"><button class="nm-modal-close">取消</button></div>
-              </div>
-            `
-            root.appendChild(mask)
-            mask.querySelector(".nm-modal-close").onclick = () => mask.remove()
-
-            mask.querySelectorAll(".nm-char-row").forEach(row => {
-              row.onclick = async () => {
-                const char = chars[Number(row.dataset.idx)]
-                mask.remove()
-                await doShareToChat(char)
-              }
-            })
-          }
-
-          async function doShareToChat(char) {
-            const currentLyric = lyricsLines[lyricsActiveIdx]?.text || lyricsLines[0]?.text || "暂无歌词"
-            let conversationId = await resolveConversationId(char)
-            if (!conversationId) {
-              roche.ui.toast("找不到和这个角色的聊天会话")
-              return
-            }
-            try {
-              await roche.memory.write({
-                conversationId,
-                summaryText: `用户分享了正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}。当前歌词：${currentLyric}`,
-                details: {
-                  song: nowPlaying.name,
-                  artist: nowPlaying.artist,
-                  lyric: currentLyric
-                },
-                who: ["用户"],
-                action: "分享音乐",
-                when: "刚刚",
-                where: "网易云插件",
-                source: "plugin"
-              })
-              const opened = await openConversationPage(conversationId)
-              if (opened) {
-                roche.ui.toast("已打开聊天页面并分享歌曲")
-              } else {
-                roche.ui.toast("已写入记忆，未能直接打开聊天页面")
-              }
-            } catch (e) {
-              roche.ui.toast("分享到聊天失败：" + e.message)
-            }
-          }
 
           function showReplyModal(char, text) {
             const mask = document.createElement("div")
@@ -1389,14 +1316,15 @@
               try {
                 await roche.memory.write({
                   conversationId: s.conversationId,
-                  summaryText: `用户正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}。当前歌词：${currentLyric}`,
+                  summaryText: `用户正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}`,
+                  descriptionText: `当前歌词：${currentLyric}`,
                   details: {
                     song: nowPlaying.name,
                     artist: nowPlaying.artist,
                     lyric: currentLyric
                   },
                   who: ["用户"],
-                  action: "播放音乐",
+                  action: `播放歌曲：《${nowPlaying.name}》`,
                   when: "刚刚",
                   where: "网易云插件",
                   source: "plugin"
@@ -1440,6 +1368,7 @@
             }
             showQrLogin()
           }
+          topbarStyleBtn.onclick = showSettings
 
           root.querySelectorAll(".nm-tab").forEach(t => {
             t.onclick = () => {
@@ -1512,7 +1441,6 @@
 
           np.querySelector(".nm-np-collapse").onclick = () => np.classList.remove("show")
           np.querySelector(".nm-np-share").onclick = shareToCharacter
-          if (npShareChatBtn) npShareChatBtn.onclick = shareToChatPage
           npLyricsToggleBtn.onclick = () => np.classList.toggle("nm-showlyrics")
 
           np.querySelector(".nm-np-toggle").onclick = togglePlay
