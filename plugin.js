@@ -3,18 +3,66 @@
   let pollTimer = null
   let audioEl = null
   let styleEl = null
+  let customStyleEl = null
 
   const CSS = `
 .${ROOT} {
+  --nm-bg: #050505;
+  --nm-fg: #f2f2f2;
+  --nm-accent: #fff;
+  --nm-06: rgba(255,255,255,0.06);
+  --nm-08: rgba(255,255,255,0.08);
+  --nm-10: rgba(255,255,255,0.1);
+  --nm-12: rgba(255,255,255,0.12);
+  --nm-14: rgba(255,255,255,0.14);
+  --nm-15: rgba(255,255,255,0.15);
+  --nm-16: rgba(255,255,255,0.16);
+  --nm-20: rgba(255,255,255,0.2);
+  --nm-28: rgba(255,255,255,0.28);
+  --nm-40: rgba(255,255,255,0.4);
+  --nm-45: rgba(255,255,255,0.45);
+  --nm-50: rgba(255,255,255,0.5);
+  --nm-55: rgba(255,255,255,0.55);
+  --nm-60: rgba(255,255,255,0.6);
+  --nm-ov-25: rgba(0,0,0,0.25);
+  --nm-ov-50: rgba(0,0,0,0.5);
+  --nm-modal-bg: rgba(30,30,30,0.7);
+  --nm-lyric-dim: rgba(255,255,255,0.35);
+  --nm-lyric-active: #fff;
+
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: #050505;
-  color: #f2f2f2;
+  background: var(--nm-bg);
+  color: var(--nm-fg);
   font-family: -apple-system, "PingFang SC", sans-serif;
   font-size: 14px;
   overflow: hidden;
+}
+.${ROOT}.nm-theme-light {
+  --nm-bg: #eef0f3;
+  --nm-fg: #17171a;
+  --nm-accent: #17171a;
+  --nm-06: rgba(0,0,0,0.045);
+  --nm-08: rgba(255,255,255,0.55);
+  --nm-10: rgba(255,255,255,0.65);
+  --nm-12: rgba(0,0,0,0.08);
+  --nm-14: rgba(0,0,0,0.08);
+  --nm-15: rgba(0,0,0,0.1);
+  --nm-16: rgba(0,0,0,0.08);
+  --nm-20: rgba(0,0,0,0.12);
+  --nm-28: rgba(0,0,0,0.14);
+  --nm-40: rgba(0,0,0,0.35);
+  --nm-45: rgba(0,0,0,0.32);
+  --nm-50: rgba(0,0,0,0.45);
+  --nm-55: rgba(0,0,0,0.4);
+  --nm-60: rgba(0,0,0,0.5);
+  --nm-ov-25: rgba(255,255,255,0.4);
+  --nm-ov-50: rgba(255,255,255,0.55);
+  --nm-modal-bg: rgba(255,255,255,0.8);
+  --nm-lyric-dim: rgba(0,0,0,0.3);
+  --nm-lyric-active: #17171a;
 }
 .${ROOT} * { box-sizing: border-box; }
 .${ROOT} .nm-bg {
@@ -28,16 +76,16 @@
   z-index: 0;
 }
 .${ROOT} button {
-  background: rgba(255,255,255,0.1);
+  background: var(--nm-10);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.16);
-  color: #fff;
+  border: 1px solid var(--nm-16);
+  color: var(--nm-accent);
   border-radius: 14px;
   padding: 8px 14px;
   font-size: 13px;
   cursor: pointer;
 }
-.${ROOT} button:active { background: rgba(255,255,255,0.2); }
+.${ROOT} button:active { background: var(--nm-20); }
 .${ROOT} .nm-topbar {
   position: relative;
   z-index: 1;
@@ -62,8 +110,8 @@
   flex: 1;
   display: flex;
   gap: 6px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--nm-06);
+  border: 1px solid var(--nm-10);
   border-radius: 14px;
   padding: 3px;
 }
@@ -72,12 +120,12 @@
   text-align: center;
   padding: 7px 4px;
   border-radius: 11px;
-  color: rgba(255,255,255,0.55);
+  color: var(--nm-55);
   cursor: pointer;
 }
 .${ROOT} .nm-tab.active {
-  color: #fff;
-  background: rgba(255,255,255,0.16);
+  color: var(--nm-accent);
+  background: var(--nm-16);
 }
 .${ROOT} .nm-view {
   position: relative;
@@ -95,15 +143,15 @@
 }
 .${ROOT} .nm-search-bar input {
   flex: 1;
-  background: rgba(255,255,255,0.08);
+  background: var(--nm-08);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.15);
-  color: #fff;
+  border: 1px solid var(--nm-15);
+  color: var(--nm-accent);
   border-radius: 14px;
   padding: 8px 12px;
   font-size: 13px;
 }
-.${ROOT} .nm-search-bar input::placeholder { color: rgba(255,255,255,0.45); }
+.${ROOT} .nm-search-bar input::placeholder { color: var(--nm-45); }
 .${ROOT} .nm-body {
   flex: 1;
   min-height: 0;
@@ -122,8 +170,8 @@
   height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--nm-12);
+  border: 1px solid var(--nm-15);
 }
 .${ROOT} .nm-profile-name {
   margin-top: 8px;
@@ -141,13 +189,13 @@
   border-radius: 14px;
   cursor: pointer;
 }
-.${ROOT} .nm-row:active { background: rgba(255,255,255,0.08); }
+.${ROOT} .nm-row:active { background: var(--nm-08); }
 .${ROOT} .nm-row img {
   width: 44px;
   height: 44px;
   border-radius: 10px;
   object-fit: cover;
-  background: rgba(255,255,255,0.1);
+  background: var(--nm-10);
 }
 .${ROOT} .nm-row .nm-meta { flex: 1; min-width: 0; }
 .${ROOT} .nm-row .nm-title {
@@ -156,14 +204,14 @@
   text-overflow: ellipsis;
 }
 .${ROOT} .nm-row .nm-sub {
-  color: rgba(255,255,255,0.5);
+  color: var(--nm-50);
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .${ROOT} .nm-empty {
-  color: rgba(255,255,255,0.4);
+  color: var(--nm-40);
   text-align: center;
   padding: 40px 20px;
 }
@@ -178,9 +226,9 @@
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  background: rgba(255,255,255,0.08);
+  background: var(--nm-08);
   backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.14);
+  border: 1px solid var(--nm-14);
 }
 .${ROOT} .nm-miniplayer img {
   width: 38px;
@@ -196,7 +244,7 @@
   font-size: 13px;
 }
 .${ROOT} .nm-miniplayer .nm-mp-sub {
-  color: rgba(255,255,255,0.5);
+  color: var(--nm-50);
   font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
@@ -220,7 +268,7 @@
   flex-direction: column;
   align-items: center;
   padding: 20px 24px;
-  background: rgba(0,0,0,0.25);
+  background: var(--nm-ov-25);
   backdrop-filter: blur(40px) saturate(180%);
 }
 .${ROOT} .nm-nowplaying.show { display: flex; }
@@ -237,7 +285,39 @@
   border-radius: 20px;
   object-fit: cover;
   margin: 28px 0 20px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 50px var(--nm-ov-50);
+}
+.${ROOT} .nm-nowplaying.nm-showlyrics .nm-np-art { display: none; }
+.${ROOT} .nm-np-lyrics {
+  display: none;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  margin: 20px 0;
+  overflow-y: auto;
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+}
+.${ROOT} .nm-nowplaying.nm-showlyrics .nm-np-lyrics { display: block; }
+.${ROOT} .nm-np-lyrics-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 40% 10px;
+  align-items: center;
+}
+.${ROOT} .nm-lyric-line {
+  font-size: 15px;
+  color: var(--nm-lyric-dim);
+  text-align: center;
+  transition: color 0.3s, transform 0.3s;
+  line-height: 1.5;
+}
+.${ROOT} .nm-lyric-line.active {
+  color: var(--nm-lyric-active);
+  font-size: 18px;
+  font-weight: 600;
+  transform: scale(1.03);
 }
 .${ROOT} .nm-np-title {
   font-size: 18px;
@@ -246,7 +326,7 @@
   padding: 0 10px;
 }
 .${ROOT} .nm-np-artist {
-  color: rgba(255,255,255,0.6);
+  color: var(--nm-60);
   margin-top: 4px;
   text-align: center;
 }
@@ -254,7 +334,7 @@
   width: 100%;
   height: 4px;
   border-radius: 2px;
-  background: rgba(255,255,255,0.2);
+  background: var(--nm-20);
   margin-top: 24px;
   position: relative;
   cursor: pointer;
@@ -263,7 +343,7 @@
   position: absolute;
   left: 0; top: 0; bottom: 0;
   border-radius: 2px;
-  background: #fff;
+  background: var(--nm-accent);
   width: 0%;
 }
 .${ROOT} .nm-np-time {
@@ -271,7 +351,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  color: rgba(255,255,255,0.5);
+  color: var(--nm-50);
   margin-top: 6px;
 }
 .${ROOT} .nm-np-controls {
@@ -292,7 +372,7 @@
 .${ROOT} .nm-modal-mask {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: var(--nm-ov-50);
   backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
@@ -300,9 +380,9 @@
   z-index: 999;
 }
 .${ROOT} .nm-modal-box {
-  background: rgba(30,30,30,0.7);
+  background: var(--nm-modal-bg);
   backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.15);
+  border: 1px solid var(--nm-15);
   border-radius: 20px;
   padding: 18px;
   text-align: center;
@@ -311,16 +391,28 @@
   overflow-y: auto;
 }
 .${ROOT} .nm-modal-box img { width: 180px; height: 180px; margin: 10px 0; border-radius: 12px; }
-.${ROOT} .nm-modal-status { color: rgba(255,255,255,0.6); font-size: 12px; margin-bottom: 10px; }
+.${ROOT} .nm-modal-status { color: var(--nm-60); font-size: 12px; margin-bottom: 10px; }
 .${ROOT} .nm-modal-box input {
   width: 100%;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  color: #fff;
+  background: var(--nm-08);
+  border: 1px solid var(--nm-15);
+  color: var(--nm-accent);
   border-radius: 12px;
   padding: 8px 10px;
   font-size: 13px;
   margin-bottom: 10px;
+}
+.${ROOT} .nm-modal-box textarea {
+  width: 100%;
+  background: var(--nm-08);
+  border: 1px solid var(--nm-15);
+  color: var(--nm-fg);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: monospace;
+  margin-bottom: 10px;
+  resize: vertical;
 }
 .${ROOT} .nm-char-row {
   display: flex;
@@ -331,7 +423,7 @@
   cursor: pointer;
   text-align: left;
 }
-.${ROOT} .nm-char-row:active { background: rgba(255,255,255,0.1); }
+.${ROOT} .nm-char-row:active { background: var(--nm-10); }
 .${ROOT} .nm-char-row img {
   width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin: 0;
 }
@@ -346,8 +438,8 @@
   height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--nm-12);
+  border: 1px solid var(--nm-15);
 }
 .${ROOT} .nm-char-detail-head .nm-char-detail-name {
   margin-top: 8px;
@@ -363,7 +455,7 @@
   padding: 0 12px;
 }
 .${ROOT} .nm-char-actions button.on {
-  background: rgba(255,255,255,0.28);
+  background: var(--nm-28);
 }
 .${ROOT} .nm-reply-box {
   font-size: 13px;
@@ -387,6 +479,9 @@
           styleEl.textContent = CSS
           document.head.appendChild(styleEl)
 
+          customStyleEl = document.createElement("style")
+          document.head.appendChild(customStyleEl)
+
           let config = (await roche.storage.get("config")) || {
             apiBase: "",
             cookie: "",
@@ -394,9 +489,14 @@
             nickname: "",
             avatar: "",
             realIP: "",
-            syncChars: []
+            syncChars: [],
+            theme: "dark",
+            customCss: ""
           }
           if (!Array.isArray(config.syncChars)) config.syncChars = []
+          if (!config.theme) config.theme = "dark"
+          if (config.customCss === undefined) config.customCss = ""
+          customStyleEl.textContent = config.customCss || ""
 
           let activeTab = "search"
           let searchResults = []
@@ -404,6 +504,8 @@
           let currentTracks = []
           let currentPlaylistName = ""
           let nowPlaying = null
+          let lyricsLines = []
+          let lyricsActiveIdx = -1
           let charList = []
           let charScreen = "list" // "list" | "detail"
           let selectedChar = null
@@ -420,6 +522,7 @@
               <div class="nm-bg"></div>
               <div class="nm-topbar">
                 <button class="nm-round nm-gear" title="设置">⚙</button>
+                <button class="nm-round nm-theme-toggle" title="日间/夜间">☾</button>
                 <div class="nm-tabs">
                   <div class="nm-tab active" data-tab="search">搜索</div>
                   <div class="nm-tab" data-tab="library">我的歌单</div>
@@ -461,9 +564,13 @@
               <div class="nm-nowplaying">
                 <div class="nm-np-top">
                   <button class="nm-round nm-np-collapse">︾</button>
+                  <button class="nm-np-lyrics-toggle">词</button>
                   <button class="nm-np-share">分享给角色</button>
                 </div>
                 <img class="nm-np-art" />
+                <div class="nm-np-lyrics">
+                  <div class="nm-np-lyrics-inner"></div>
+                </div>
                 <div class="nm-np-title"></div>
                 <div class="nm-np-artist"></div>
                 <div class="nm-np-progress">
@@ -481,6 +588,9 @@
           `
 
           const root = container.querySelector(`.${ROOT}`)
+          if (config.theme === "light") root.classList.add("nm-theme-light")
+          const themeToggleBtn = root.querySelector(".nm-theme-toggle")
+          themeToggleBtn.textContent = config.theme === "light" ? "☀" : "☾"
           const bg = root.querySelector(".nm-bg")
           const viewSearch = root.querySelector(".nm-view-search")
           const viewLibrary = root.querySelector(".nm-view-library")
@@ -505,6 +615,8 @@
           const npCur = np.querySelector(".nm-np-cur")
           const npDur = np.querySelector(".nm-np-dur")
           const npToggle = np.querySelector(".nm-np-toggle")
+          const npLyricsInner = np.querySelector(".nm-np-lyrics-inner")
+          const npLyricsToggleBtn = np.querySelector(".nm-np-lyrics-toggle")
 
           const AUDIO_ID = "roche-netease-audio-persistent"
           audioEl = document.getElementById(AUDIO_ID)
@@ -607,12 +719,78 @@
             return `${m}:${s < 10 ? "0" : ""}${s}`
           }
 
+          function parseLrc(text) {
+            const lines = text.split("\n")
+            const timeExp = /\[(\d{2}):(\d{2})(?:[.:](\d{1,3}))?\]/g
+            const result = []
+            for (const line of lines) {
+              const matches = [...line.matchAll(timeExp)]
+              if (!matches.length) continue
+              const content = line.replace(timeExp, "").trim()
+              if (!content) continue
+              for (const m of matches) {
+                const min = parseInt(m[1], 10)
+                const sec = parseInt(m[2], 10)
+                const ms = m[3] ? parseInt(m[3].padEnd(3, "0"), 10) : 0
+                result.push({ time: min * 60 + sec + ms / 1000, text: content })
+              }
+            }
+            result.sort((a, b) => a.time - b.time)
+            return result
+          }
+
+          function renderLyrics() {
+            lyricsActiveIdx = -1
+            if (!lyricsLines.length) {
+              npLyricsInner.innerHTML = `<div class="nm-lyric-line">暂无歌词</div>`
+              return
+            }
+            npLyricsInner.innerHTML = lyricsLines.map((l, i) =>
+              `<div class="nm-lyric-line" data-idx="${i}">${escapeHtml(l.text)}</div>`
+            ).join("")
+          }
+
+          async function loadLyrics(id) {
+            lyricsLines = []
+            renderLyrics()
+            try {
+              const data = await api("/lyric", { id })
+              const lrc = data.lrc && data.lrc.lyric
+              lyricsLines = lrc ? parseLrc(lrc) : []
+              renderLyrics()
+            } catch (e) {
+              lyricsLines = []
+              renderLyrics()
+            }
+          }
+
+          function updateLyricHighlight(cur) {
+            if (!lyricsLines.length) return
+            let idx = -1
+            for (let i = 0; i < lyricsLines.length; i++) {
+              if (lyricsLines[i].time <= cur) idx = i
+              else break
+            }
+            if (idx === lyricsActiveIdx) return
+            const prevEl = npLyricsInner.querySelector(".nm-lyric-line.active")
+            if (prevEl) prevEl.classList.remove("active")
+            lyricsActiveIdx = idx
+            if (idx >= 0) {
+              const el = npLyricsInner.children[idx]
+              if (el) {
+                el.classList.add("active")
+                el.scrollIntoView({ block: "center", behavior: "smooth" })
+              }
+            }
+          }
+
           function updateProgress() {
             const dur = audioEl.duration || 0
             const cur = audioEl.currentTime || 0
             npFill.style.width = dur ? `${(cur / dur) * 100}%` : "0%"
             npCur.textContent = fmtTime(cur)
             npDur.textContent = fmtTime(dur)
+            updateLyricHighlight(cur)
           }
 
           async function playSongById(id, title, artist, cover) {
@@ -645,6 +823,7 @@
 
               bg.style.backgroundImage = cover ? `url(${cover})` : "none"
 
+              loadLyrics(id)
               syncNowPlayingToChars()
             } catch (e) {
               roche.ui.toast("播放失败：" + e.message)
@@ -768,6 +947,7 @@
                 <div class="nm-modal-status">设置</div>
                 <input class="nm-settings-input" placeholder="API 地址，例如 https://xxx.vercel.app" value="${escapeHtml(config.apiBase)}" />
                 <input class="nm-settings-realip" placeholder="realIP（用 Vercel 部署时必填，如 116.25.146.177）" value="${escapeHtml(config.realIP)}" />
+                <textarea class="nm-settings-css" placeholder="自定义 CSS（选填，会覆盖默认样式）" rows="6">${escapeHtml(config.customCss)}</textarea>
                 <button class="nm-settings-save">保存</button>
                 <div style="margin-top:8px;"><button class="nm-modal-close">关闭</button></div>
               </div>
@@ -777,6 +957,8 @@
             mask.querySelector(".nm-settings-save").onclick = async () => {
               config.apiBase = mask.querySelector(".nm-settings-input").value.trim()
               config.realIP = mask.querySelector(".nm-settings-realip").value.trim()
+              config.customCss = mask.querySelector(".nm-settings-css").value
+              customStyleEl.textContent = config.customCss || ""
               await roche.storage.set("config", config)
               roche.ui.toast("已保存")
               mask.remove()
@@ -1059,6 +1241,13 @@
           root.querySelector(".nm-gear").onclick = showSettings
           root.querySelector(".nm-close").onclick = () => roche.ui.closeApp()
 
+          themeToggleBtn.onclick = async () => {
+            config.theme = config.theme === "light" ? "dark" : "light"
+            root.classList.toggle("nm-theme-light", config.theme === "light")
+            themeToggleBtn.textContent = config.theme === "light" ? "☀" : "☾"
+            await roche.storage.set("config", config)
+          }
+
           root.querySelector(".nm-search-btn").onclick = doSearch
           root.querySelector(".nm-search-input").addEventListener("keydown", (e) => {
             if (e.key === "Enter") doSearch()
@@ -1153,6 +1342,7 @@
 
           np.querySelector(".nm-np-collapse").onclick = () => np.classList.remove("show")
           np.querySelector(".nm-np-share").onclick = shareToCharacter
+          npLyricsToggleBtn.onclick = () => np.classList.toggle("nm-showlyrics")
 
           npProgress.addEventListener("click", (e) => {
             const rect = npProgress.getBoundingClientRect()
@@ -1178,6 +1368,7 @@
             npArtist.textContent = artist
             npToggle.textContent = audioEl.paused ? "▶" : "❚❚"
             bg.style.backgroundImage = cover ? `url(${cover})` : "none"
+            loadLyrics(audioEl.dataset.songId)
             updateProgress()
           }
 
@@ -1187,6 +1378,7 @@
         async unmount(container) {
           if (pollTimer) clearInterval(pollTimer)
           if (styleEl) styleEl.remove()
+          if (customStyleEl) customStyleEl.remove()
           // 音频元素挂在 document.body 上，这里不清理也不暂停，
           // 如果宿主只是隐藏了这个页面（没有彻底销毁 JS 环境），音乐会继续播放。
           // 如果宿主彻底销毁了页面上下文，这里怎么写都留不住，是平台限制。
