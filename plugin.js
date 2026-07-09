@@ -362,7 +362,8 @@
             cookie: "",
             uid: "",
             nickname: "",
-            avatar: ""
+            avatar: "",
+            realIP: ""
           }
 
           let activeTab = "search"
@@ -473,6 +474,7 @@
             }
             const usp = new URLSearchParams(params || {})
             if (config.cookie) usp.set("cookie", config.cookie)
+            if (config.realIP) usp.set("realIP", config.realIP)
             usp.set("timestamp", Date.now().toString())
             const base = config.apiBase.replace(/\/+$/, "")
             const url = `${base}${path}?${usp.toString()}`
@@ -707,6 +709,7 @@
               <div class="nm-modal-box">
                 <div class="nm-modal-status">设置</div>
                 <input class="nm-settings-input" placeholder="API 地址，例如 https://xxx.vercel.app" value="${escapeHtml(config.apiBase)}" />
+                <input class="nm-settings-realip" placeholder="realIP（用 Vercel 部署时必填，如 116.25.146.177）" value="${escapeHtml(config.realIP)}" />
                 <button class="nm-settings-save">保存</button>
                 <div style="margin-top:8px;"><button class="nm-modal-close">关闭</button></div>
               </div>
@@ -715,6 +718,7 @@
             mask.querySelector(".nm-modal-close").onclick = () => mask.remove()
             mask.querySelector(".nm-settings-save").onclick = async () => {
               config.apiBase = mask.querySelector(".nm-settings-input").value.trim()
+              config.realIP = mask.querySelector(".nm-settings-realip").value.trim()
               await roche.storage.set("config", config)
               roche.ui.toast("已保存")
               mask.remove()
