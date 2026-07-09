@@ -1088,6 +1088,11 @@
               await roche.memory.write({
                 conversationId,
                 summaryText: `用户分享了正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}。当前歌词：${currentLyric}`,
+                details: {
+                  song: nowPlaying.name,
+                  artist: nowPlaying.artist,
+                  lyric: currentLyric
+                },
                 who: ["用户"],
                 action: "分享音乐",
                 when: "刚刚",
@@ -1282,11 +1287,17 @@
 
           async function syncNowPlayingToChars() {
             if (!nowPlaying || !config.syncChars.length) return
+            const currentLyric = lyricsLines[lyricsActiveIdx]?.text || lyricsLines[0]?.text || "暂无歌词"
             for (const s of config.syncChars) {
               try {
                 await roche.memory.write({
                   conversationId: s.conversationId,
-                  summaryText: `用户正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}`,
+                  summaryText: `用户正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}。当前歌词：${currentLyric}`,
+                  details: {
+                    song: nowPlaying.name,
+                    artist: nowPlaying.artist,
+                    lyric: currentLyric
+                  },
                   who: ["用户"],
                   action: "播放音乐",
                   when: "刚刚",
