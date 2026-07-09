@@ -64,6 +64,34 @@
   --nm-lyric-dim: rgba(0,0,0,0.3);
   --nm-lyric-active: #17171a;
 }
+.${ROOT}.nm-theme-clean {
+  --nm-bg: #ffffff;
+  --nm-fg: #121212;
+  --nm-accent: #000000;
+  --nm-06: rgba(0,0,0,0.06);
+  --nm-08: rgba(0,0,0,0.08);
+  --nm-10: rgba(0,0,0,0.1);
+  --nm-12: rgba(0,0,0,0.12);
+  --nm-14: rgba(0,0,0,0.14);
+  --nm-15: rgba(0,0,0,0.15);
+  --nm-16: rgba(0,0,0,0.16);
+  --nm-20: rgba(0,0,0,0.2);
+  --nm-28: rgba(0,0,0,0.28);
+  --nm-40: rgba(0,0,0,0.4);
+  --nm-45: rgba(0,0,0,0.45);
+  --nm-50: rgba(0,0,0,0.5);
+  --nm-55: rgba(0,0,0,0.55);
+  --nm-60: rgba(0,0,0,0.6);
+  --nm-ov-25: rgba(0,0,0,0.08);
+  --nm-ov-50: rgba(0,0,0,0.12);
+  --nm-modal-bg: rgba(255,255,255,0.96);
+  --nm-lyric-dim: rgba(0,0,0,0.45);
+  --nm-lyric-active: #000000;
+}
+.${ROOT}.nm-theme-clean .nm-bg {
+  opacity: 0.18;
+  filter: blur(60px) saturate(70%) brightness(1.9);
+}
 .${ROOT} * { box-sizing: border-box; }
 .${ROOT} .nm-bg {
   position: absolute;
@@ -602,18 +630,17 @@
                   <span class="nm-np-dur">0:00</span>
                 </div>
                 <div class="nm-np-controls">
-                  <button class="nm-np-prev" title="上一首">⏮</button>
                   <button class="nm-np-toggle nm-np-play">❚❚</button>
-                  <button class="nm-np-next" title="下一首">⏭</button>
                 </div>
               </div>
             </div>
           `
 
           const root = container.querySelector(`.${ROOT}`)
-          if (config.theme === "light") root.classList.add("nm-theme-light")
+          root.classList.toggle("nm-theme-light", config.theme === "light")
+          root.classList.toggle("nm-theme-clean", config.theme === "clean")
           const themeToggleBtn = root.querySelector(".nm-theme-toggle")
-          themeToggleBtn.textContent = config.theme === "light" ? "☀" : "☾"
+          themeToggleBtn.textContent = config.theme === "light" ? "☀" : config.theme === "clean" ? "◻" : "☾"
           const bg = root.querySelector(".nm-bg")
           const viewSearch = root.querySelector(".nm-view-search")
           const viewLibrary = root.querySelector(".nm-view-library")
@@ -973,6 +1000,12 @@
                 <input class="nm-settings-input" placeholder="API 地址，例如 https://xxx.vercel.app" value="${escapeHtml(config.apiBase)}" />
                 <input class="nm-settings-realip" placeholder="realIP（用 Vercel 部署时必填，如 116.25.146.177）" value="${escapeHtml(config.realIP)}" />
                 <textarea class="nm-settings-css" placeholder="自定义 CSS（选填，会覆盖默认样式）" rows="6">${escapeHtml(config.customCss)}</textarea>
+                <div class="nm-settings-note">
+                  可在这里覆盖样式，例如：
+                  <div style="text-align:left; margin-top:6px; font-size:12px; color: var(--nm-50); line-height:1.4;">
+                    .nm-topbar, .nm-tabs, .nm-row, .nm-miniplayer, .nm-nowplaying, .nm-np-art, .nm-np-title, .nm-np-artist, .nm-np-progress, .nm-np-controls, .nm-bg, .nm-search-bar input, .nm-modal-box
+                  </div>
+                </div>
                 <button class="nm-settings-save">保存</button>
                 <div style="margin-top:8px;"><button class="nm-modal-close">关闭</button></div>
               </div>
@@ -1034,6 +1067,7 @@
           }
 
           async function doShare(char) {
+            const currentLyric = lyricsLines[lyricsActiveIdx]?.text || lyricsLines[0]?.text || "暂无歌词"
             const ok = await roche.ui.confirm({
               title: "分享给 " + (char.handle || char.name),
               message: `把正在听的《${nowPlaying.name}》分享给 ${char.handle || char.name}，这会写入和 ta 的记忆里，确定吗？`
@@ -1053,7 +1087,7 @@
 
               await roche.memory.write({
                 conversationId,
-                summaryText: `用户分享了正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}`,
+                summaryText: `用户分享了正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}。当前歌词：${currentLyric}`,
                 who: ["用户"],
                 action: "分享音乐",
                 when: "刚刚",
@@ -1068,7 +1102,7 @@
                 messages: [
                   {
                     role: "system",
-                    content: `你正在扮演角色"${char.name}"。人设：${personaText}。用户刚刚跟你分享了ta正在听的歌曲《${nowPlaying.name}》，歌手是${nowPlaying.artist}。请用符合这个人设的语气，简短自然地回应一句（不超过40字），不要加任何解释或旁白。`
+                    content: `你正在扮演角色"${char.name}"。人设：${personaText}。用户刚刚跟你分享了ta正在听的歌曲《${nowPlaying.name}》，歌手是${nowPlaying.artist}。你需要记住这首歌的歌名和当前一句歌词：${currentLyric}。请用符合这个人设的语气，简短自然地回应一句（不超过40字），不要加任何解释或旁白。`
                   },
                   { role: "user", content: "(分享了一首正在听的歌)" }
                 ]
@@ -1267,9 +1301,12 @@
           root.querySelector(".nm-close").onclick = () => roche.ui.closeApp()
 
           themeToggleBtn.onclick = async () => {
-            config.theme = config.theme === "light" ? "dark" : "light"
+            if (config.theme === "dark") config.theme = "light"
+            else if (config.theme === "light") config.theme = "clean"
+            else config.theme = "dark"
             root.classList.toggle("nm-theme-light", config.theme === "light")
-            themeToggleBtn.textContent = config.theme === "light" ? "☀" : "☾"
+            root.classList.toggle("nm-theme-clean", config.theme === "clean")
+            themeToggleBtn.textContent = config.theme === "light" ? "☀" : config.theme === "clean" ? "◻" : "☾"
             await roche.storage.set("config", config)
           }
 
@@ -1369,42 +1406,7 @@
           np.querySelector(".nm-np-share").onclick = shareToCharacter
           npLyricsToggleBtn.onclick = () => np.classList.toggle("nm-showlyrics")
 
-          function playPrevious() {
-            if (!nowPlayingSource || nowPlayingIdx < 0) return
-            const list = nowPlayingSource === "search" ? searchResults : nowPlayingSource === "playlist" ? currentTracks : charPlaylist
-            const prevIdx = nowPlayingIdx - 1
-            if (prevIdx < 0) {
-              roche.ui.toast("已是第一首")
-              return
-            }
-            const song = list[prevIdx]
-            if (!song) return
-            const artists = nowPlayingSource === "search" 
-              ? (song.ar || song.artists || []).map(a => a.name).join(" / ")
-              : (song.ar || []).map(a => a.name).join(" / ")
-            const cover = (song.al && song.al.picUrl) || song.picUrl || song.cover || ""
-            playSongById(song.id, song.name, artists, cover, nowPlayingSource, prevIdx)
-          }
-
-          function playNext() {
-            if (!nowPlayingSource || nowPlayingIdx < 0) return
-            const list = nowPlayingSource === "search" ? searchResults : nowPlayingSource === "playlist" ? currentTracks : charPlaylist
-            const nextIdx = nowPlayingIdx + 1
-            if (nextIdx >= list.length) {
-              roche.ui.toast("已是最后一首")
-              return
-            }
-            const song = list[nextIdx]
-            if (!song) return
-            const artists = nowPlayingSource === "search" 
-              ? (song.ar || song.artists || []).map(a => a.name).join(" / ")
-              : (song.ar || []).map(a => a.name).join(" / ")
-            const cover = (song.al && song.al.picUrl) || song.picUrl || song.cover || ""
-            playSongById(song.id, song.name, artists, cover, nowPlayingSource, nextIdx)
-          }
-
-          np.querySelector(".nm-np-prev").onclick = playPrevious
-          np.querySelector(".nm-np-next").onclick = playNext
+          np.querySelector(".nm-np-toggle").onclick = togglePlay
 
           npProgress.addEventListener("click", (e) => {
             const rect = npProgress.getBoundingClientRect()
