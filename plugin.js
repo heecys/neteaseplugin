@@ -267,8 +267,8 @@
   display: none;
   flex-direction: column;
   align-items: center;
-  padding: 20px 24px;
-  background: var(--nm-ov-25);
+  padding: calc(env(safe-area-inset-top, 12px) + 8px) 24px calc(env(safe-area-inset-bottom, 12px) + 8px);
+  background: linear-gradient(135deg, rgba(5,5,5,0.95) 0%, rgba(20,20,20,0.95) 100%);
   backdrop-filter: blur(40px) saturate(180%);
 }
 .${ROOT} .nm-nowplaying.show { display: flex; }
@@ -277,15 +277,21 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 20px;
+  gap: 8px;
+}
+.${ROOT} .nm-np-top button {
+  flex-shrink: 0;
 }
 .${ROOT} .nm-np-art {
-  width: 62%;
-  max-width: 260px;
+  width: 85%;
+  max-width: 320px;
   aspect-ratio: 1/1;
-  border-radius: 20px;
+  border-radius: 24px;
   object-fit: cover;
-  margin: 28px 0 20px;
-  box-shadow: 0 20px 50px var(--nm-ov-50);
+  margin: 16px 0;
+  box-shadow: 0 24px 60px var(--nm-ov-50);
+  flex-shrink: 0;
 }
 .${ROOT} .nm-nowplaying.nm-showlyrics .nm-np-art { display: none; }
 .${ROOT} .nm-np-lyrics {
@@ -293,56 +299,59 @@
   width: 100%;
   flex: 1;
   min-height: 0;
-  margin: 20px 0;
+  margin: 16px 0;
   overflow-y: auto;
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 10%, #000 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 10%, #000 90%, transparent 100%);
 }
 .${ROOT} .nm-nowplaying.nm-showlyrics .nm-np-lyrics { display: block; }
 .${ROOT} .nm-np-lyrics-inner {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 40% 10px;
+  gap: 20px;
+  padding: 30% 10px;
   align-items: center;
 }
 .${ROOT} .nm-lyric-line {
-  font-size: 15px;
+  font-size: 14px;
   color: var(--nm-lyric-dim);
   text-align: center;
   transition: color 0.3s, transform 0.3s;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 .${ROOT} .nm-lyric-line.active {
   color: var(--nm-lyric-active);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  transform: scale(1.03);
+  transform: scale(1.02);
 }
 .${ROOT} .nm-np-title {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   text-align: center;
-  padding: 0 10px;
+  padding: 0 12px;
+  line-height: 1.3;
+  margin-top: 12px;
 }
 .${ROOT} .nm-np-artist {
   color: var(--nm-60);
-  margin-top: 4px;
+  margin-top: 6px;
   text-align: center;
+  font-size: 14px;
 }
 .${ROOT} .nm-np-progress {
   width: 100%;
-  height: 4px;
-  border-radius: 2px;
+  height: 3px;
+  border-radius: 1.5px;
   background: var(--nm-20);
-  margin-top: 24px;
+  margin-top: 20px;
   position: relative;
   cursor: pointer;
 }
 .${ROOT} .nm-np-progress-fill {
   position: absolute;
   left: 0; top: 0; bottom: 0;
-  border-radius: 2px;
+  border-radius: 1.5px;
   background: var(--nm-accent);
   width: 0%;
 }
@@ -350,24 +359,34 @@
   width: 100%;
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--nm-50);
-  margin-top: 6px;
+  margin-top: 8px;
 }
 .${ROOT} .nm-np-controls {
   display: flex;
   align-items: center;
-  gap: 22px;
-  margin-top: 26px;
+  justify-content: center;
+  gap: 36px;
+  margin-top: 28px;
+  flex-wrap: wrap;
 }
 .${ROOT} .nm-np-controls button {
-  width: 56px;
-  height: 56px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  font-size: 20px;
+  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+.${ROOT} .nm-np-controls button.nm-np-play {
+  width: 64px;
+  height: 64px;
+  font-size: 24px;
+  background: var(--nm-16);
+  border: 1px solid var(--nm-20);
 }
 .${ROOT} .nm-modal-mask {
   position: fixed;
@@ -504,6 +523,8 @@
           let currentTracks = []
           let currentPlaylistName = ""
           let nowPlaying = null
+          let nowPlayingSource = null // "search" | "playlist" | "char"
+          let nowPlayingIdx = -1
           let lyricsLines = []
           let lyricsActiveIdx = -1
           let charList = []
@@ -564,8 +585,8 @@
               <div class="nm-nowplaying">
                 <div class="nm-np-top">
                   <button class="nm-round nm-np-collapse">︾</button>
-                  <button class="nm-np-lyrics-toggle">词</button>
-                  <button class="nm-np-share">分享给角色</button>
+                  <button class="nm-np-lyrics-toggle" title="显示歌词">词</button>
+                  <button class="nm-np-share" title="分享">☰</button>
                 </div>
                 <img class="nm-np-art" />
                 <div class="nm-np-lyrics">
@@ -581,7 +602,9 @@
                   <span class="nm-np-dur">0:00</span>
                 </div>
                 <div class="nm-np-controls">
-                  <button class="nm-np-toggle">❚❚</button>
+                  <button class="nm-np-prev" title="上一首">⏮</button>
+                  <button class="nm-np-toggle nm-np-play">❚❚</button>
+                  <button class="nm-np-next" title="下一首">⏭</button>
                 </div>
               </div>
             </div>
@@ -793,7 +816,7 @@
             updateLyricHighlight(cur)
           }
 
-          async function playSongById(id, title, artist, cover) {
+          async function playSongById(id, title, artist, cover, source = "search", idx = -1) {
             try {
               const data = await api("/song/url/v1", { id, level: "standard" })
               const info = data.data && data.data[0]
@@ -809,6 +832,8 @@
               audioEl.dataset.cover = cover || ""
 
               nowPlaying = { id, name: title, artist: artist || "", cover: cover || "" }
+              nowPlayingSource = source
+              nowPlayingIdx = idx
 
               miniImg.src = cover || ""
               miniTitle.textContent = title
@@ -1290,7 +1315,7 @@
               if (song) {
                 const artists = (song.ar || song.artists || []).map(a => a.name).join(" / ")
                 const cover = (song.al && song.al.picUrl) || song.picUrl || ""
-                playSongById(song.id, song.name, artists, cover)
+                playSongById(song.id, song.name, artists, cover, "search", idx)
               }
             } else if (action === "openPlaylist") {
               openPlaylist(idx)
@@ -1299,7 +1324,7 @@
               if (song) {
                 const artists = (song.ar || []).map(a => a.name).join(" / ")
                 const cover = (song.al && song.al.picUrl) || ""
-                playSongById(song.id, song.name, artists, cover)
+                playSongById(song.id, song.name, artists, cover, "playlist", idx)
               }
             } else if (action === "backToPlaylists") {
               renderPlaylists()
@@ -1309,7 +1334,7 @@
               renderCharList()
             } else if (action === "playCharSong") {
               const song = charPlaylist[idx]
-              if (song) playSongById(song.id, song.name, song.artist, song.cover)
+              if (song) playSongById(song.id, song.name, song.artist, song.cover, "char", idx)
             } else if (action === "genPlaylist") {
               generatePlaylistForChar()
             } else if (action === "toggleSync") {
@@ -1344,6 +1369,43 @@
           np.querySelector(".nm-np-share").onclick = shareToCharacter
           npLyricsToggleBtn.onclick = () => np.classList.toggle("nm-showlyrics")
 
+          function playPrevious() {
+            if (!nowPlayingSource || nowPlayingIdx < 0) return
+            const list = nowPlayingSource === "search" ? searchResults : nowPlayingSource === "playlist" ? currentTracks : charPlaylist
+            const prevIdx = nowPlayingIdx - 1
+            if (prevIdx < 0) {
+              roche.ui.toast("已是第一首")
+              return
+            }
+            const song = list[prevIdx]
+            if (!song) return
+            const artists = nowPlayingSource === "search" 
+              ? (song.ar || song.artists || []).map(a => a.name).join(" / ")
+              : (song.ar || []).map(a => a.name).join(" / ")
+            const cover = (song.al && song.al.picUrl) || song.picUrl || song.cover || ""
+            playSongById(song.id, song.name, artists, cover, nowPlayingSource, prevIdx)
+          }
+
+          function playNext() {
+            if (!nowPlayingSource || nowPlayingIdx < 0) return
+            const list = nowPlayingSource === "search" ? searchResults : nowPlayingSource === "playlist" ? currentTracks : charPlaylist
+            const nextIdx = nowPlayingIdx + 1
+            if (nextIdx >= list.length) {
+              roche.ui.toast("已是最后一首")
+              return
+            }
+            const song = list[nextIdx]
+            if (!song) return
+            const artists = nowPlayingSource === "search" 
+              ? (song.ar || song.artists || []).map(a => a.name).join(" / ")
+              : (song.ar || []).map(a => a.name).join(" / ")
+            const cover = (song.al && song.al.picUrl) || song.picUrl || song.cover || ""
+            playSongById(song.id, song.name, artists, cover, nowPlayingSource, nextIdx)
+          }
+
+          np.querySelector(".nm-np-prev").onclick = playPrevious
+          np.querySelector(".nm-np-next").onclick = playNext
+
           npProgress.addEventListener("click", (e) => {
             const rect = npProgress.getBoundingClientRect()
             const ratio = (e.clientX - rect.left) / rect.width
@@ -1358,6 +1420,8 @@
             const artist = audioEl.dataset.artist || ""
             const cover = audioEl.dataset.cover || ""
             nowPlaying = { id: audioEl.dataset.songId, name: title, artist, cover }
+            nowPlayingSource = null
+            nowPlayingIdx = -1
             miniImg.src = cover
             miniTitle.textContent = title
             miniSub.textContent = artist
