@@ -335,6 +335,36 @@
 .${ROOT} .nm-char-row img {
   width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin: 0;
 }
+.${ROOT} .nm-char-detail-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 12px 6px;
+}
+.${ROOT} .nm-char-detail-head img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.${ROOT} .nm-char-detail-head .nm-char-detail-name {
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.${ROOT} .nm-char-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0 12px;
+}
+.${ROOT} .nm-char-actions button.on {
+  background: rgba(255,255,255,0.28);
+}
 .${ROOT} .nm-reply-box {
   font-size: 13px;
   line-height: 1.5;
@@ -363,8 +393,10 @@
             uid: "",
             nickname: "",
             avatar: "",
-            realIP: ""
+            realIP: "",
+            syncChars: []
           }
+          if (!Array.isArray(config.syncChars)) config.syncChars = []
 
           let activeTab = "search"
           let searchResults = []
@@ -372,6 +404,10 @@
           let currentTracks = []
           let currentPlaylistName = ""
           let nowPlaying = null
+          let charList = []
+          let charScreen = "list" // "list" | "detail"
+          let selectedChar = null
+          let charPlaylist = []
 
           function escapeHtml(str) {
             return String(str || "").replace(/[&<>"']/g, (c) => ({
@@ -387,6 +423,7 @@
                 <div class="nm-tabs">
                   <div class="nm-tab active" data-tab="search">搜索</div>
                   <div class="nm-tab" data-tab="library">我的歌单</div>
+                  <div class="nm-tab" data-tab="char">角色</div>
                 </div>
                 <button class="nm-round nm-close" title="退出插件">✕</button>
               </div>
@@ -406,6 +443,10 @@
                   <button class="nm-profile-login">${config.cookie ? "退出登录" : "登录"}</button>
                 </div>
                 <div class="nm-body nm-library-body"></div>
+              </div>
+
+              <div class="nm-view nm-view-char" style="display:none;">
+                <div class="nm-body nm-char-body"></div>
               </div>
 
               <div class="nm-miniplayer">
@@ -443,8 +484,10 @@
           const bg = root.querySelector(".nm-bg")
           const viewSearch = root.querySelector(".nm-view-search")
           const viewLibrary = root.querySelector(".nm-view-library")
+          const viewChar = root.querySelector(".nm-view-char")
           const searchBody = root.querySelector(".nm-search-body")
           const libraryBody = root.querySelector(".nm-library-body")
+          const charBody = root.querySelector(".nm-char-body")
           const profileAvatar = root.querySelector(".nm-profile-avatar")
           const profileName = root.querySelector(".nm-profile-name")
           const profileLoginBtn = root.querySelector(".nm-profile-login")
@@ -463,9 +506,17 @@
           const npDur = np.querySelector(".nm-np-dur")
           const npToggle = np.querySelector(".nm-np-toggle")
 
-          audioEl = document.createElement("audio")
-          audioEl.style.display = "none"
-          root.appendChild(audioEl)
+          const AUDIO_ID = "roche-netease-audio-persistent"
+          audioEl = document.getElementById(AUDIO_ID)
+          let resumedFromBackground = false
+          if (audioEl) {
+            resumedFromBackground = true
+          } else {
+            audioEl = document.createElement("audio")
+            audioEl.id = AUDIO_ID
+            audioEl.style.display = "none"
+            document.body.appendChild(audioEl)
+          }
 
           async function api(path, params) {
             if (!config.apiBase) {
@@ -574,6 +625,10 @@
               }
               audioEl.src = info.url
               audioEl.play()
+              audioEl.dataset.songId = String(id)
+              audioEl.dataset.title = title
+              audioEl.dataset.artist = artist || ""
+              audioEl.dataset.cover = cover || ""
 
               nowPlaying = { id, name: title, artist: artist || "", cover: cover || "" }
 
@@ -589,6 +644,8 @@
               npToggle.textContent = "❚❚"
 
               bg.style.backgroundImage = cover ? `url(${cover})` : "none"
+
+              syncNowPlayingToChars()
             } catch (e) {
               roche.ui.toast("播放失败：" + e.message)
             }
@@ -627,6 +684,7 @@
             })
             viewSearch.style.display = activeTab === "search" ? "flex" : "none"
             viewLibrary.style.display = activeTab === "library" ? "flex" : "none"
+            viewChar.style.display = activeTab === "char" ? "flex" : "none"
           }
 
           function updateProfileUI() {
@@ -830,6 +888,174 @@
             mask.querySelector(".nm-modal-close").onclick = () => mask.remove()
           }
 
+          async function resolveConversationId(char) {
+            if (char.conversationId) return char.conversationId
+            try {
+              const convs = await roche.conversation.list({ memberId: char.id })
+              if (convs && convs.length) return convs[0].id || convs[0].conversationId
+            } catch (e) {}
+            return null
+          }
+
+          async function renderCharList() {
+            charScreen = "list"
+            charBody.innerHTML = `<div class="nm-empty">加载角色列表…</div>`
+            try {
+              charList = await roche.character.list()
+            } catch (e) {
+              charBody.innerHTML = `<div class="nm-empty">获取角色列表失败</div>`
+              return
+            }
+            if (!charList.length) {
+              charBody.innerHTML = `<div class="nm-empty">还没有角色</div>`
+              return
+            }
+            charBody.innerHTML = charList.map((c, i) => `
+              <div class="nm-row" data-action="openChar" data-idx="${i}">
+                <img src="${c.avatar || ""}" style="border-radius:50%;" />
+                <div class="nm-meta">
+                  <div class="nm-title">${escapeHtml(c.handle || c.name)}</div>
+                  <div class="nm-sub">${config.syncChars.some(s => s.id === c.id) ? "正在同步我听的歌" : ""}</div>
+                </div>
+              </div>
+            `).join("")
+          }
+
+          async function openChar(idx) {
+            selectedChar = charList[idx]
+            if (!selectedChar) return
+            charScreen = "detail"
+            let stored = null
+            try { stored = await roche.storage.get("charplaylist:" + selectedChar.id) } catch (e) {}
+            try { charPlaylist = stored ? JSON.parse(stored) : [] } catch (e) { charPlaylist = [] }
+            renderCharDetail()
+          }
+
+          function renderCharDetail() {
+            const isSyncing = config.syncChars.some(s => s.id === selectedChar.id)
+            const songsHtml = charPlaylist.length
+              ? charPlaylist.map((s, i) => `
+                  <div class="nm-row" data-action="playCharSong" data-idx="${i}">
+                    <img src="${s.cover || ""}" />
+                    <div class="nm-meta">
+                      <div class="nm-title">${escapeHtml(s.name)}</div>
+                      <div class="nm-sub">${escapeHtml(s.artist)}</div>
+                    </div>
+                  </div>
+                `).join("")
+              : `<div class="nm-empty">还没有生成歌单</div>`
+
+            charBody.innerHTML = `
+              <div class="nm-row" data-action="backToCharList">
+                <div class="nm-meta"><div class="nm-title">← 返回角色列表</div></div>
+              </div>
+              <div class="nm-char-detail-head">
+                <img src="${selectedChar.avatar || ""}" />
+                <div class="nm-char-detail-name">${escapeHtml(selectedChar.handle || selectedChar.name)}</div>
+              </div>
+              <div class="nm-char-actions">
+                <button data-action="genPlaylist">生成ta喜欢的歌单</button>
+                <button data-action="toggleSync" class="${isSyncing ? "on" : ""}">${isSyncing ? "已同步我在听的歌" : "同步我在听的歌"}</button>
+              </div>
+              ${songsHtml}
+            `
+          }
+
+          async function generatePlaylistForChar() {
+            if (!config.apiBase) {
+              roche.ui.toast("先在设置里填 API 地址")
+              return
+            }
+            const char = selectedChar
+            roche.ui.toast("正在生成…")
+            try {
+              const personaText = char.persona || char.bio || ""
+              const result = await roche.ai.chat({
+                messages: [
+                  {
+                    role: "system",
+                    content: `你正在扮演角色"${char.name}"。人设：${personaText}。请按这个人设列出8首ta会喜欢听的中文或英文歌曲，真实存在的歌，不要编造。只输出一个 JSON 数组，格式：[{"name":"歌名","artist":"歌手"}]，不要输出任何别的文字、解释或代码块标记。`
+                  },
+                  { role: "user", content: "生成歌单" }
+                ]
+              })
+              let text = (result && result.text || "").trim()
+              text = text.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim()
+              let list = []
+              try {
+                list = JSON.parse(text)
+              } catch (e) {
+                roche.ui.toast("生成结果解析失败，再试一次")
+                return
+              }
+              const tracks = []
+              for (const item of list) {
+                if (!item || !item.name) continue
+                try {
+                  const data = await api("/search", { keywords: `${item.name} ${item.artist || ""}`, limit: 1 })
+                  const song = data.result && data.result.songs && data.result.songs[0]
+                  if (song) {
+                    const artists = (song.ar || song.artists || []).map(a => a.name).join(" / ")
+                    const cover = (song.al && song.al.picUrl) || ""
+                    tracks.push({ id: song.id, name: song.name, artist: artists || item.artist || "", cover })
+                  }
+                } catch (e) {}
+              }
+              if (!tracks.length) {
+                roche.ui.toast("没搜到能播放的歌，再试一次")
+                return
+              }
+              charPlaylist = tracks
+              await roche.storage.set("charplaylist:" + char.id, JSON.stringify(tracks))
+              renderCharDetail()
+              roche.ui.toast("生成好了")
+            } catch (e) {
+              roche.ui.toast("生成失败：" + e.message)
+            }
+          }
+
+          async function toggleSyncForChar() {
+            const char = selectedChar
+            const idx = config.syncChars.findIndex(s => s.id === char.id)
+            if (idx >= 0) {
+              config.syncChars.splice(idx, 1)
+              await roche.storage.set("config", config)
+              roche.ui.toast("已停止同步")
+            } else {
+              const conversationId = await resolveConversationId(char)
+              if (!conversationId) {
+                roche.ui.toast("找不到和这个角色的会话")
+                return
+              }
+              const ok = await roche.ui.confirm({
+                title: "同步给 " + (char.handle || char.name),
+                message: `开启后，每次你换歌，ta 都会知道你在听什么，确定吗？`
+              })
+              if (!ok) return
+              config.syncChars.push({ id: char.id, conversationId, name: char.handle || char.name })
+              await roche.storage.set("config", config)
+              roche.ui.toast("已开启同步")
+            }
+            renderCharDetail()
+          }
+
+          async function syncNowPlayingToChars() {
+            if (!nowPlaying || !config.syncChars.length) return
+            for (const s of config.syncChars) {
+              try {
+                await roche.memory.write({
+                  conversationId: s.conversationId,
+                  summaryText: `用户正在听的歌曲：《${nowPlaying.name}》- ${nowPlaying.artist}`,
+                  who: ["用户"],
+                  action: "播放音乐",
+                  when: "刚刚",
+                  where: "网易云插件",
+                  source: "plugin"
+                })
+              } catch (e) {}
+            }
+          }
+
           root.querySelector(".nm-gear").onclick = showSettings
           root.querySelector(".nm-close").onclick = () => roche.ui.closeApp()
 
@@ -861,11 +1087,12 @@
               activeTab = t.dataset.tab
               setActiveTab()
               if (activeTab === "library") loadPlaylists()
+              if (activeTab === "char") renderCharList()
             }
           })
 
           function handleRowClick(e) {
-            const rowEl = e.target.closest(".nm-row")
+            const rowEl = e.target.closest("[data-action]")
             if (!rowEl) return
             const action = rowEl.dataset.action
             const idx = rowEl.dataset.idx !== undefined ? Number(rowEl.dataset.idx) : null
@@ -882,14 +1109,27 @@
               const song = currentTracks[idx]
               if (song) {
                 const artists = (song.ar || []).map(a => a.name).join(" / ")
-                playSongById(song.id, song.name, artists, "")
+                const cover = (song.al && song.al.picUrl) || ""
+                playSongById(song.id, song.name, artists, cover)
               }
             } else if (action === "backToPlaylists") {
               renderPlaylists()
+            } else if (action === "openChar") {
+              openChar(idx)
+            } else if (action === "backToCharList") {
+              renderCharList()
+            } else if (action === "playCharSong") {
+              const song = charPlaylist[idx]
+              if (song) playSongById(song.id, song.name, song.artist, song.cover)
+            } else if (action === "genPlaylist") {
+              generatePlaylistForChar()
+            } else if (action === "toggleSync") {
+              toggleSyncForChar()
             }
           }
           searchBody.addEventListener("click", handleRowClick)
           libraryBody.addEventListener("click", handleRowClick)
+          charBody.addEventListener("click", handleRowClick)
 
           function togglePlay() {
             if (audioEl.paused) {
@@ -923,13 +1163,33 @@
           audioEl.addEventListener("timeupdate", updateProgress)
           audioEl.addEventListener("loadedmetadata", updateProgress)
 
+          if (resumedFromBackground && audioEl.dataset.songId) {
+            const title = audioEl.dataset.title || ""
+            const artist = audioEl.dataset.artist || ""
+            const cover = audioEl.dataset.cover || ""
+            nowPlaying = { id: audioEl.dataset.songId, name: title, artist, cover }
+            miniImg.src = cover
+            miniTitle.textContent = title
+            miniSub.textContent = artist
+            mini.style.display = "flex"
+            miniToggle.textContent = audioEl.paused ? "▶" : "❚❚"
+            npArt.src = cover
+            npTitle.textContent = title
+            npArtist.textContent = artist
+            npToggle.textContent = audioEl.paused ? "▶" : "❚❚"
+            bg.style.backgroundImage = cover ? `url(${cover})` : "none"
+            updateProgress()
+          }
+
           setActiveTab()
           renderSongList(searchBody, searchResults)
         },
         async unmount(container) {
           if (pollTimer) clearInterval(pollTimer)
-          if (audioEl) audioEl.pause()
           if (styleEl) styleEl.remove()
+          // 音频元素挂在 document.body 上，这里不清理也不暂停，
+          // 如果宿主只是隐藏了这个页面（没有彻底销毁 JS 环境），音乐会继续播放。
+          // 如果宿主彻底销毁了页面上下文，这里怎么写都留不住，是平台限制。
           container.replaceChildren()
         }
       }
